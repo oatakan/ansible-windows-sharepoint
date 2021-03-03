@@ -1,0 +1,139 @@
+---
+
+- name: Configure SP managed account
+  win_dsc:
+    resource_name: SPManagedAccount
+    Account_username: '{{ dns_domain_name_short }}\{{ item }}'
+    Account_password: "{{ ansible_password }}"
+    AccountName: '{{ dns_domain_name_short }}\{{ item }}'
+    PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+    PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
+    Ensure: Present
+    EmailNotification: 5
+    PreExpireDays: 2
+  loop:
+    - "{{ farm_admin_user }}"
+    - "{{ services_user }}"
+    - "{{ search_user }}"
+    - "{{ sharepoint_admin_user }}"
+
+- name: Configure SP service app pool
+  win_dsc:
+    resource_name: SPServiceAppPool
+    Name: '{{ sharepoint_service_app_pool_name }}'
+    ServiceAccount: '{{ dns_domain_name_short }}\{{ farm_admin_user }}'
+    PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+    PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
+    Ensure: Present
+
+- name: Configure SP service web application
+  win_dsc:
+    resource_name: SPWebApplication
+    DatabaseName: '{{ sharepoint_web_app_db_name }}'
+    WebAppUrl: '{{ sharepoint_web_url }}'
+    ApplicationPool: '{{ sharepoint_web_app_pool_name }}'
+    HostHeader: '{{ sharepoint_web_app_host_header }}'
+    Path: '{{ sharepoint_web_app_path }}'
+    AllowAnonymous: False
+    Name: '{{ sharepoint_web_app_name }}'
+    PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+    PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
+    ApplicationPoolAccount: '{{ farm_admin_user }}'
+    Ensure: Present
+    Port: '{{ sharepoint_web_port }}'
+    DatabaseServer: '{{ slq_server_host }}'
+  register: sp_configure_web_app
+
+- name: Configure SP service web app pool
+  win_dsc:
+    resource_name: SPServiceAppPool
+    Name: MMS
+    ServiceAccount: "{{ farm_admin_user }}"
+    PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+    PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
+    Ensure: Present
+
+- name: Configure SP content db
+  win_dsc:
+    resource_name: SPContentDatabase
+    Enabled: True
+    MaximumSiteCount: 5000
+    Name: '{{ sharepoint_web_app_db_name }}'
+    Ensure: Present
+    PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+    PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
+    WarningSiteCount: 2000
+    DatabaseServer: '{{ slq_server_host }}'
+    WebAppUrl: '{{ sharepoint_web_url }}'
+
+- name: Configure SP quota template
+  win_dsc:
+    resource_name: SPQuotaTemplate
+    Name: '{{ sharepoint_quota_template_name }}'
+    MaximumUsagePointsSolutions: 300
+    Ensure: Present
+    PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+    PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
+    StorageMaxInMB: 10240
+    WarningUsagePointsSolutions: 275
+    StorageWarningInMB: 8192
+
+# reboot seems to be needed in SingleServerFarm configuration due to a bug, see this
+# https://github.com/dsccommunity/SharePointDsc/issues/990
+
+- name: reboot if needed
+  win_reboot:
+  when:
+    - sp_configure_web_app is changed
+    - (sp_server_role == 'SingleServerFarm') | default(False)
+
+- name: Configure SP site main
+  win_dsc:
+    resource_name: SPSite
+    Name: Root Site
+    Description: Root Site
+    OwnerAlias: '{{ dns_domain_name_short }}\{{ farm_admin_user }}'
+    PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+    PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
+    Url: '{{ sharepoint_web_url }}'
+    Language: 1033
+    QuotaTemplate: '{{ sharepoint_quota_template_name }}'
+    CompatibilityLevel: 15
+    Template: "STS#0"
+    ContentDatabase: '{{ sharepoint_web_app_db_name }}'
+
+- name: Configure SP sub site web
+  win_dsc:
+    resource_name: SPWeb
+    Name: Subweb1
+    Url: '{{ sharepoint_web_url }}/subweb1'
+    AddToQuickLaunch: True
+    AddToTopNav: True
+    Description: This is a subsite
+    UseParentTopNav: True
+    UniquePermissions: True
+    Template: "STS#0"
+    PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+    PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
+
+- name: Configure SP site search
+  win_dsc:
+    resource_name: SPSite
+    OwnerAlias: '{{ dns_domain_name_short }}\{{ farm_admin_user }}'
+    PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+    PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
+    Url: '{{ sharepoint_web_url }}/sites/searchcenter'
+    Language: 1033
+    QuotaTemplate: '{{ sharepoint_quota_template_name }}'
+    CompatibilityLevel: 15
+    Template: "SRCHCEN#0"
+    ContentDatabase: '{{ sharepoint_web_app_db_name }}'
+
+- name: Configure SP service instances
+  win_dsc:
+    resource_name: SPServiceInstance
+    Name: '{{ item }}'
+    Ensure: Present
+    PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+    PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
+  loop: '{{ sharepoint_service_instances }}'

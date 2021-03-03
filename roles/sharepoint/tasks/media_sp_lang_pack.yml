@@ -1,0 +1,22 @@
+---
+
+- name: Set sp language pack path
+  set_fact:
+    language_pack_path: '{{ ansible_env.TEMP }}\sp_lang_pack'
+
+- name: ensure sp language path directory exists
+  win_file:
+    path: '{{ language_pack_path }}'
+    state: directory
+
+- name: extract sharepoint language files
+  win_package:
+    path: '{{ sharepoint_language_pack_path }}'
+    arguments:
+      - /quiet
+      - /passive
+      - /norestart
+      - /extract:{{ language_pack_path }}
+    user_name: Administrator
+    user_password: '{{ ansible_password }}'
+    creates_path: '{{ language_pack_path }}\Setup.exe'

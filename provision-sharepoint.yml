@@ -1,0 +1,65 @@
+- name: setup domain controller
+  hosts: '*domain_controller:*standalone'
+
+  pre_tasks:
+    - name: set ad server ip
+      add_host:
+        name: ad_server
+        ip_address:  "{{ ansible_ip_addresses[0] | default(ansible_host) | default(ansible_ssh_host) }}"
+
+    - debug:
+        var: hostvars['ad_server']['ip_address']
+
+  roles:
+    - role: domain-controller
+      ad_users: "{{ sp_users }}"
+
+- name: setup database
+  hosts: '*database:*standalone'
+
+  pre_tasks:
+    - name: set sql server ip
+      add_host:
+        name: database
+        ansible_host:  "{{ ansible_hostname | default(ansible_host) | default(ansible_ssh_host) }}"
+
+    - debug:
+        var: hostvars['database']['ansible_host']
+
+  roles:
+    - role: join-domain
+      dns_servers: ["{{ hostvars.ad_server.ip_address }}"]
+    - role: mssql
+      sql_admin_user: "{{ farm_admin_user }}"
+
+- name: deploy sharepoint
+  hosts: '*appserver:*wfe:*search:*standalone'
+
+  pre_tasks:
+    # this task can be removed when using exact match for group name under group_vars which is automatically loaded
+    # for example vmware_tag_role_appserver.yml vs appserver.yml
+    # this approach should work for multi-cloud scenarios where tag names start with different prefixes on different providers
+    - include_vars:
+        dir: group_vars
+        files_matching: "{{ (hostvars[inventory_hostname].group_names | select('match','.*_role_.*') | list | first | default('none')).split('_')[-1] }}.yml"
+
+  roles:
+    - role: join-domain
+      dns_servers: ["{{ hostvars.ad_server.ip_address }}"]
+    - role: sharepoint
+      slq_server_host: "{{ hostvars.database.ansible_host }}"
+
+- name: configure sharepoint
+  hosts: '*appserver:*standalone'
+
+  pre_tasks:
+    # this task can be removed when using exact match for group name under group_vars which is automatically loaded
+    # for example vmware_tag_role_appserver.yml vs appserver.yml
+    # this approach should work for multi-cloud scenarios where tag names start with different prefixes on different providers
+    - include_vars:
+        dir: group_vars
+        files_matching: "{{ (hostvars[inventory_hostname].group_names | select('match','.*_role_.*') | list | first | default('none')).split('_')[-1] }}.yml"
+
+  roles:
+    - role: sharepoint-configure
+      slq_server_host: "{{ hostvars.database.ansible_host }}"

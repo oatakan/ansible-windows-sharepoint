@@ -1,0 +1,122 @@
+---
+
+- block:
+    - include_tasks: media_win2k_r2.yml
+
+    - name: Copy SXS folder
+      win_dsc:
+        resource_name: File
+        SourcePath: '{{ sxs_remote_path }}'
+        Type: Directory
+        DestinationPath: '{{ sxs_local_path }}'
+        Recurse: True
+        Credential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+        Credential_password: "{{ domain_admin_password }}"
+        Force: True
+        PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+        PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
+
+  always:
+    - name: unmount iso
+      win_disk_image:
+        image_path: "{{ win2012_r2_iso_path }}"
+        state: absent
+      become: yes
+      become_user: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+      become_method: runas
+      vars:
+        ansible_become_password: "{{ domain_admin_password }}"
+  when:
+    - sp_run_central_admin | bool
+    - sp_version == '2016'
+
+- block:
+    - include_tasks: media_sp.yml
+
+    - name: Install Sharepoint prereqs
+      win_dsc:
+        resource_name: SPInstallPrereqs
+        IsSingleInstance: 'Yes'
+        InstallerPath: '{{ sharepoint_binary_path }}prerequisiteinstaller.exe'
+        OnlineMode: True
+    #    SQLNCli: '{{ sharepoint_binary_path }}prerequisiteinstallerfiles\sqlncli.msi'
+    #    DOTNETFX: '{{ sharepoint_binary_path }}prerequisiteinstallerfiles\dotNetfx45_Full_setup.exe'
+    #    NETFX: '{{ sharepoint_binary_path }}prerequisiteinstallerfiles\NDP453-KB2969351-x86-x64-AllOS-ENU.exe'
+    #    Sync: '{{ sharepoint_binary_path }}prerequisiteinstallerfiles\Synchronization.msi'
+    #    AppFabric: '{{ sharepoint_binary_path }}prerequisiteinstallerfiles\WindowsServerAppFabricSetup_x64.exe'
+    #    IDFX11: '{{ sharepoint_binary_path }}prerequisiteinstallerfiles\MicrosoftIdentityExtensions-64.msi'
+    #    MSIPCClient: '{{ sharepoint_binary_path }}prerequisiteinstallerfiles\setup_msipc_x64.exe'
+    #    WCFDataServices56: '{{ sharepoint_binary_path }}prerequisiteinstallerfiles\WcfDataServices.exe'
+    #    KB3092423: '{{ sharepoint_binary_path }}prerequisiteinstallerfiles\AppFabric-KB3092423-x64-ENU.exe'
+    #    MSVCRT11: '{{ sharepoint_binary_path }}prerequisiteinstallerfiles\vcredist_x64.exe'
+    #    MSVCRT14: '{{ sharepoint_binary_path }}prerequisiteinstallerfiles\vc_redist.x64.exe'
+    #    ODBC: '{{ sharepoint_binary_path }}prerequisiteinstallerfiles\msodbcsql.msi'
+    #    SXSPath: '{{ sxs_local_path }}'
+        PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+        PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
+      register: sp_prereqs_install
+
+    - name: Reboot if needed
+      win_reboot:
+      when: sp_prereqs_install.reboot_required | default(False)
+
+    - include_tasks: media_sp.yml
+      when: sp_prereqs_install.reboot_required | default(False)
+
+    - name: Install Sharepoint
+      win_dsc:
+        resource_name: SPInstall
+        Ensure: Present
+        IsSingleInstance: 'Yes'
+        BinaryDir: '{{ sharepoint_binary_path }}'
+        ProductKey: '{{ sharepoint_product_key | default("") }}'
+        PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+        PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
+      register: sp_install
+
+    - name: Reboot if needed
+      win_reboot:
+      when: sp_install.reboot_required | default(False)
+
+    - include_tasks: media_sp_lang_pack.yml
+
+    - name: Install Sharepoint language pack
+      win_dsc:
+        resource_name: SPInstallLanguagePack
+        BinaryDir: '{{ language_pack_path }}'
+        Ensure: Present
+        PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+        PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
+
+  always:
+
+    - name: unmount iso
+      win_dsc:
+        resource_name: MountImage
+        ImagePath: '{{ sharepoint_img_path }}'
+        Ensure: Absent
+        PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+        PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
+
+- name: Configure SP farm
+  win_dsc:
+    resource_name: SPFarm
+    IsSingleInstance: 'Yes'
+    Passphrase_username: Passphrase
+    Passphrase_password: '{{ ansible_password }}'
+    AdminContentDatabaseName: '{{ sharepoint_farm_admin_content_db_name }}'
+    FarmAccount_username: '{{ dns_domain_name_short }}\{{ farm_admin_user }}'
+    FarmAccount_password: "{{ ansible_password }}"
+    FarmConfigDatabaseName: '{{ sharepoint_farm_config_db_name }}'
+    CentralAdministrationPort: '{{ sharepoint_central_admin_port }}'
+    PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+    PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
+    RunCentralAdmin: "{{ sp_run_central_admin | bool }}"
+    ServerRole: "{{ sp_server_role }}"
+    Ensure: Present
+    DatabaseServer: '{{ slq_server_host }}'
+  register: configure_sf_farm
+  until: configure_sf_farm is success
+  delay: 5
+  retries: 10
+  ignore_errors: yes

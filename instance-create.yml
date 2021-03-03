@@ -1,0 +1,15 @@
+- name: Deploy Windows Servers
+  hosts: all
+  gather_facts: False
+  connection: local
+  become: no
+  vars:
+    ansible_port: 5986
+    provider: vmware
+    deployment: multi
+    template_name: windows-2019
+  vars_files:
+    - node-config/nodes-{{ deployment }}-{{ provider }}.yml
+
+  roles:
+    - ansible-role-{{ provider }}

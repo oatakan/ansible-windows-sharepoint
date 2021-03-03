@@ -1,0 +1,32 @@
+---
+
+- name: check win2012 r2 ISO file
+  win_stat:
+    path: "{{ win2012_r2_iso_path }}"
+  register: win2012_r2_iso_file
+  when: (":" in win2012_r2_iso_path)
+
+- name: download win2012 r2 ISO file
+  win_get_url:
+    dest: "{{ win2012_r2_iso_path }}"
+    url: "{{ win2012_r2_iso_url }}"
+  register: download_iso
+  until: download_iso is success
+  delay: 3
+  retries: 5
+  when: (":" in win2012_r2_iso_path) and (not win2012_r2_iso_file.stat.exists)
+
+- name: mount win2012 r2 iso
+  win_disk_image:
+    image_path: "{{ win2012_r2_iso_path }}"
+    state: present
+  register: win2012_r2_disk_image_out
+  become: yes
+  become_user: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+  become_method: runas
+  vars:
+    ansible_become_password: "{{ domain_admin_password }}"
+
+- name: Set win2012 r2 sxs path
+  set_fact:
+    sxs_remote_path: '{{ win2012_r2_disk_image_out.mount_path }}sources\sxs'

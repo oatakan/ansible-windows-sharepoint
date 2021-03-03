@@ -1,0 +1,11 @@
+---
+
+- name: Install required DSC modules
+  win_psmodule:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - SharePointDSC
+
+- include_tasks: configure_sp.yml
+  when: sp_run_central_admin | bool

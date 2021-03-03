@@ -1,0 +1,2 @@
+sp_run_central_admin: yes
+sp_server_role: SingleServerFarm

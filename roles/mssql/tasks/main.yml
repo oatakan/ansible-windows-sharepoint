@@ -1,0 +1,85 @@
+---
+
+- name: Install required DSC modules
+  win_psmodule:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - NetworkingDsc
+    - SqlServerDsc
+    - StorageDsc
+
+- name: Create firewall rules
+  win_dsc:
+    resource_name: FireWall
+    Name: AllowSQLConnection
+    DisplayName: Allow SQL Connection
+    Group: 'Ansible Configuration Rules'
+    Ensure: Present
+    Enabled: True
+    Profile: Domain
+    Direction: InBound
+    LocalPort: 1433
+    Protocol: TCP
+    Description: Firewall Rule to allow SQL communication
+
+- block:
+    - include_tasks: media_sql.yml
+
+    - name: Enable windows features required by SQL
+      win_dsc:
+        resource_name: WindowsFeature
+        Name: "{{ item }}"
+        IncludeAllSubFeature: True
+        Ensure: Present
+      loop:
+        - NET-Framework-Core
+        - NET-Framework-Features
+
+    - name: Setup SQL server
+      win_dsc:
+        resource_name: SqlSetup
+        InstanceName: MSSQLServer
+        SourcePath: '{{ sql_binary_path }}'
+        Features: SQLENGINE
+        InstallSharedDir: 'C:\Program Files\Microsoft SQL Server'
+        SQLSysAdminAccounts:
+          - '{{ dns_domain_name_short }}\{{ sql_admin_user }}'
+        SQLSvcAccount_username: '{{ dns_domain_name_short }}\{{ domain_admin_username }}'
+        SQLSvcAccount_password: "{{ domain_admin_password }}"
+        AgtSvcAccount_username: '{{ dns_domain_name_short }}\{{ domain_admin_username }}'
+        AgtSvcAccount_password: "{{ domain_admin_password }}"
+        PSDscRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+        PSDscRunAsCredential_password: "{{ domain_admin_password }}"
+
+    - name: Set SQL server MaxDop to 1
+      win_dsc:
+        resource_name: SqlMaxDop
+        InstanceName: MSSQLSERVER
+        Ensure: Present
+        MaxDop: 1
+        PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+        PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
+
+    - name: SQL Enable TCP
+      win_dsc:
+        resource_name: SqlServerNetwork
+        InstanceName: MSSQLSERVER
+        ProtocolName: Tcp
+        IsEnabled: True
+        TCPDynamicPort: False
+        TCPPort: 1433
+        RestartService: True
+        PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+        PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
+
+  always:
+    - name: unmount iso
+      win_disk_image:
+        image_path: "{{ mssql_iso_path }}"
+        state: absent
+      become: yes
+      become_user: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+      become_method: runas
+      vars:
+        ansible_become_password: "{{ domain_admin_password }}"

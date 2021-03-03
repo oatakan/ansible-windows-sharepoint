@@ -1,0 +1,91 @@
+---
+
+- name: Install required DSC module
+  win_psmodule:
+    name: ActiveDirectoryDsc
+    state: present
+
+- name: Enable windows features
+  win_dsc:
+    resource_name: WindowsFeature
+    Name: "{{ item }}"
+    IncludeAllSubFeature: True
+    Ensure: Present
+  register: enable_win_feature
+  loop:
+    - AD-Domain-Services
+    - RSAT-AD-Tools
+
+#- name: Create Domain
+#  win_dsc:
+#    resource_name: ADDomain
+#    DomainName: "{{ dns_domain_name }}"
+#    Credential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+#    Credential_password: "{{ domain_admin_password }}"
+#    SafemodeAdministratorPassword_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+#    SafemodeAdministratorPassword_password: "{{ domain_admin_password }}"
+#  register: create_domain
+
+- name: Create Domain
+  win_domain:
+    dns_domain_name: "{{ dns_domain_name }}"
+    safe_mode_password: "{{ domain_admin_password }}"
+    #domain_netbios_name: "{{ dns_domain_name_short }}"
+  register: create_domain
+
+- name: Reboot if needed
+  win_reboot:
+    post_reboot_delay: 30
+  when: create_domain.reboot_required | default(False)
+
+- name: Wait for Active Directory Web Services port
+  win_wait_for:
+    host: localhost
+    port: 9389
+    timeout: 600
+
+- name: Ensure AD Services are started
+  win_service:
+    name: "{{ item }}"
+    state: started
+    start_mode: auto
+  with_items:
+    - dns
+    - adws
+
+- name: Waiting for Domain
+  win_dsc:
+    resource_name: WaitForADDomain
+    DomainName: "{{ dns_domain_name }}"
+  register: wait_for_domain
+  until: wait_for_domain is success
+  delay: 5
+  retries: 100
+
+- name: Add windows domain admin
+  win_domain_user:
+    name: "{{ domain_admin_username }}"
+    upn: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+    state: present
+    enabled: yes
+    account_locked: no
+    groups:
+      - Domain Admins
+    password: "{{ domain_admin_password }}"
+    update_password: on_create
+    password_expired: false
+    firstname: "{{ domain_admin_username }}"
+    surname: user
+    company: AnsibleByRedHat
+    email: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+
+- name: Create additional users
+  win_dsc:
+    resource_name: ADUser
+    DomainName: "{{ dns_domain_name }}"
+    Username: '{{ item.username }}'
+    Password_username: "{{ item.username }}@{{ dns_domain_name }}"
+    Password_password: "{{ item.password }}"
+    PasswordNeverExpires: True
+  loop: "{{ ad_users }}"
+  no_log: True

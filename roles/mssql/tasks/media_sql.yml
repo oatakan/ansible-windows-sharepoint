@@ -1,0 +1,32 @@
+---
+
+- name: check mssql ISO file
+  win_stat:
+    path: "{{ mssql_iso_path }}"
+  register: mssql_iso_file
+  when: (":" in mssql_iso_path)
+
+- name: download mssql ISO file
+  win_get_url:
+    dest: "{{ mssql_iso_path }}"
+    url: "{{ mssql_iso_url }}"
+  register: download_iso
+  until: download_iso is success
+  delay: 3
+  retries: 5
+  when: (":" in mssql_iso_path) and (not mssql_iso_file.stat.exists)
+
+- name: mount mssql iso
+  win_disk_image:
+    image_path: "{{ mssql_iso_path }}"
+    state: present
+  register: mssql_disk_image_out
+  become: yes
+  become_user: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+  become_method: runas
+  vars:
+    ansible_become_password: "{{ domain_admin_password }}"
+
+- name: Set sql binary path
+  set_fact:
+    sql_binary_path: '{{ mssql_disk_image_out.mount_path }}'

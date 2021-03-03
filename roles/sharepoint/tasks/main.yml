@@ -1,0 +1,11 @@
+---
+
+- name: Install required DSC modules
+  win_psmodule:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - SharePointDSC
+    - StorageDsc
+
+- include_tasks: install_sp.yml

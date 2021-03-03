@@ -1,0 +1,138 @@
+---
+providers:
+  vcenter:
+    datacenter: cloud
+    cluster: mylab
+    resource_pool: manageto
+
+nodes:
+  - name: winspad1
+    role: domain_controller
+    app_name: sharepoint_demo
+    networks:
+    - name: mgmt
+      ip: 192.168.1.52
+      netmask: 255.255.255.0
+      gateway: 192.168.1.254
+      domain: home.ad
+      dns_servers:
+      - 192.168.1.254
+      - 8.8.4.4
+    domain: home.ad
+    memory: 6144
+    cpu: 2
+    template: "{{ template_name | default('windows-2016-standard-v2') }}"
+    snapshot_src: Linked
+    linked_clone: True
+    customization:
+      autologon: True
+      orgname: Ansible
+      fullname: Ansible
+      timezone: 20
+      password: '{{ ansible_password | default(ansible_ssh_password) | b64encode | b64decode }}'
+      runonce:
+        - c:\windows\system32\windowspowershell\v1.0\powershell.exe -command "& $([scriptblock]::Create((New-Object Net.WebClient).DownloadString('https://git.io/fNG9x'))) -ForceNewSSLCert -EnableCredSSP"
+  - name: winspwfe1
+    role: wfe
+    app_name: sharepoint_demo
+    networks:
+      - name: mgmt
+        ip: 192.168.1.53
+        netmask: 255.255.255.0
+        gateway: 192.168.1.254
+        domain: home.ad
+        dns_servers:
+          - 192.168.1.254
+          - 8.8.4.4
+    domain: home.ad
+    memory: 4096
+    cpu: 2
+    template: "{{ template_name | default('windows-2016-standard-v2') }}"
+    snapshot_src: Linked
+    linked_clone: True
+    customization:
+      autologon: True
+      orgname: Ansible
+      fullname: Ansible
+      timezone: 20
+      password: '{{ ansible_password | default(ansible_ssh_password) | b64encode | b64decode }}'
+      runonce:
+        - c:\windows\system32\windowspowershell\v1.0\powershell.exe -command "& $([scriptblock]::Create((New-Object Net.WebClient).DownloadString('https://git.io/fNG9x'))) -ForceNewSSLCert -EnableCredSSP"
+  - name: winspdb1
+    role: database
+    app_name: sharepoint_demo
+    networks:
+      - name: mgmt
+        ip: 192.168.1.54
+        netmask: 255.255.255.0
+        gateway: 192.168.1.254
+        domain: home.ad
+        dns_servers:
+          - 192.168.1.254
+          - 8.8.4.4
+    domain: home.ad
+    memory: 5120
+    cpu: 2
+    template: "{{ template_name | default('windows-2016-standard-v2') }}"
+    snapshot_src: Linked
+    linked_clone: True
+    customization:
+      autologon: True
+      orgname: Ansible
+      fullname: Ansible
+      timezone: 20
+      password: '{{ ansible_password | default(ansible_ssh_password) | b64encode | b64decode }}'
+      runonce:
+        - c:\windows\system32\windowspowershell\v1.0\powershell.exe -command "& $([scriptblock]::Create((New-Object Net.WebClient).DownloadString('https://git.io/fNG9x'))) -ForceNewSSLCert -EnableCredSSP"
+  - name: winspse1
+    role: search
+    app_name: sharepoint_demo
+    networks:
+      - name: mgmt
+        ip: 192.168.1.55
+        netmask: 255.255.255.0
+        gateway: 192.168.1.254
+        domain: home.ad
+        dns_servers:
+          - 192.168.1.254
+          - 8.8.4.4
+    domain: home.ad
+    memory: 4096
+    cpu: 2
+    template: "{{ template_name | default('windows-2016-standard-v2') }}"
+    snapshot_src: Linked
+    linked_clone: True
+    customization:
+      autologon: True
+      orgname: Ansible
+      fullname: Ansible
+      timezone: 20
+      password: '{{ ansible_password | default(ansible_ssh_password) | b64encode | b64decode }}'
+      runonce:
+        - c:\windows\system32\windowspowershell\v1.0\powershell.exe -command "& $([scriptblock]::Create((New-Object Net.WebClient).DownloadString('https://git.io/fNG9x'))) -ForceNewSSLCert -EnableCredSSP"
+  - name: winspapp1
+    role: appserver
+    app_name: sharepoint_demo
+    networks:
+      - name: mgmt
+        ip: 192.168.1.56
+        netmask: 255.255.255.0
+        gateway: 192.168.1.254
+        domain: home.ad
+        dns_servers:
+          - 192.168.1.254
+          - 8.8.4.4
+    domain: home.ad
+    memory: 6144
+    cpu: 2
+    template: "{{ template_name | default('windows-2016-standard-v2') }}"
+    snapshot_src: Linked
+    linked_clone: True
+    customization:
+      autologon: True
+      orgname: Ansible
+      fullname: Ansible
+      timezone: 20
+      password: '{{ ansible_password | default(ansible_ssh_password) | b64encode | b64decode }}'
+      runonce:
+        - c:\windows\system32\windowspowershell\v1.0\powershell.exe -command "& $([scriptblock]::Create((New-Object Net.WebClient).DownloadString('https://git.io/fNG9x'))) -ForceNewSSLCert -EnableCredSSP"

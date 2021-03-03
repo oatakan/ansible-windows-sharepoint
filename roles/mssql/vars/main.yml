@@ -1,0 +1,3 @@
+---
+
+dns_domain_name_short: "{{ dns_domain_name.split('.')[0] | upper }}"

@@ -1,0 +1,37 @@
+---
+
+sp_run_central_admin: yes
+sp_offline_install: no
+sp_version: 2019
+sp_server_role: Application
+
+dns_domain_name: example.com
+
+sharepoint_farm_admin_content_db_name: SP_Admin
+sharepoint_farm_config_db_name: SP_Config
+sharepoint_central_admin_port: 7777
+
+sharepoint_service_app_pool_name: SP-Search
+
+sharepoint_web_app_name: Root Site Collection
+sharepoint_web_port: 80
+sharepoint_web_app_db_name: Root_Content_DB
+sharepoint_web_url: 'http://root.{{ dns_domain_name }}'
+sharepoint_web_app_host_header: root.{{ dns_domain_name }}
+sharepoint_web_app_pool_name: SP-AppPool
+sharepoint_web_app_path: 'C:\inetpub\wwwroot\wss\VirtualDirectories\80'
+
+sharepoint_quota_template_name: 10GB
+
+sharepoint_service_instances:
+  - Central Administration
+  - Managed Metadata Web Service
+  - Microsoft SharePoint Foundation Incoming E-Mail
+  - Microsoft SharePoint Foundation Web Application
+  - Microsoft SharePoint Foundation Workflow Timer Service
+  - Search Host Controller Service
+  - Search Query and Site Settings Service
+  - SharePoint Server Search
+  - User Profile Service
+
+farm_admin_user: sp_farm

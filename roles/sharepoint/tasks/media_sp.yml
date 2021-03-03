@@ -1,0 +1,38 @@
+---
+
+- name: Check SharePoint img file
+  win_stat:
+    path: "{{ sharepoint_img_path }}"
+  register: sharepoint_img_file
+  when: (":" in sharepoint_img_path)
+
+- name: Download SharePoint
+  win_get_url:
+    dest: "{{ sharepoint_img_path }}"
+    url: "{{ sharepoint_img_url }}"
+  register: download_sharepoint_img
+  until: download_sharepoint_img is success
+  delay: 3
+  retries: 5
+  when: (":" in sharepoint_img_path) and (not sharepoint_img_file.stat.exists)
+
+- name: Mount the SharePoint IMG
+  win_dsc:
+    resource_name: MountImage
+    ImagePath: '{{ sharepoint_img_path }}'
+    DriveLetter: S
+    PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+    PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
+
+- name: Wait for the SharePoint Volume
+  win_dsc:
+    resource_name: WaitForVolume
+    DriveLetter: S
+    RetryIntervalSec: 5
+    RetryCount: 10
+    PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+    PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
+
+- name: Set share binary point
+  set_fact:
+    sharepoint_binary_path: 'S:\'

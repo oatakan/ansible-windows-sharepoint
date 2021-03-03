@@ -1,0 +1,8 @@
+---
+
+mssql_iso_path: '{{ ansible_env.TEMP }}\sql2016.iso'
+mssql_iso_url: https://download.microsoft.com/download/9/0/7/907AD35F-9F9C-43A5-9789-52470555DB90/ENU/SQLServer2016SP1-FullSlipstream-x64-ENU.iso
+
+dns_domain_name: example.com
+
+sql_admin_user: sqladmin

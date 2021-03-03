@@ -1,0 +1,55 @@
+---
+
+sp_run_central_admin: yes
+sp_offline_install: no
+sp_version: 2019
+sp_server_role: Application
+
+sharepoint_img_path: '{{ ansible_env.TEMP }}\officeserver.img'
+sharepoint_img_url: https://download.microsoft.com/download/0/0/4/004EE264-7043-45BF-99E3-3F74ECAE13E5/officeserver.img
+
+sharepoint_language_pack_path: '{{ ansible_env.TEMP }}\serverlanguagepack.exe'
+sharepoint_language_pack_url: ''
+
+mssql_iso_path: '{{ ansible_env.TEMP }}\sql2016.iso'
+mssql_iso_url: https://download.microsoft.com/download/9/0/7/907AD35F-9F9C-43A5-9789-52470555DB90/ENU/SQLServer2016SP1-FullSlipstream-x64-ENU.iso
+
+win2012_r2_iso_path: '{{ ansible_env.TEMP }}\win2012_r2.iso'
+win2012_r2_iso_url: ''
+
+dns_domain_name: example.com
+
+language_pack_path: Media\SP2016_Language_Pack
+sharepoint_binary_path: Media\SP2016_binaries
+sxs_local_path: 'c:\SXS'
+sxs_remote_path: Media\SXS
+sharepoint_product_key:  ''
+
+sharepoint_farm_admin_content_db_name: SP_Admin
+sharepoint_farm_config_db_name: SP_Config
+sharepoint_central_admin_port: 7777
+
+sharepoint_service_app_pool_name: SP-Search
+
+sharepoint_web_app_name: Root Site Collection
+sharepoint_web_port: 80
+sharepoint_web_app_db_name: Root_Content_DB
+sharepoint_web_url: 'http://root.{{ dns_domain_name }}'
+sharepoint_web_app_host_header: root.{{ dns_domain_name }}
+sharepoint_web_app_pool_name: SP-AppPool
+sharepoint_web_app_path: 'C:\inetpub\wwwroot\wss\VirtualDirectories\80'
+
+sharepoint_quota_template_name: 10GB
+
+sharepoint_service_instances:
+  - Central Administration
+  - Managed Metadata Web Service
+  - Microsoft SharePoint Foundation Incoming E-Mail
+  - Microsoft SharePoint Foundation Web Application
+  - Microsoft SharePoint Foundation Workflow Timer Service
+  - Search Host Controller Service
+  - Search Query and Site Settings Service
+  - SharePoint Server Search
+  - User Profile Service
+
+farm_admin_user: sp_farm
