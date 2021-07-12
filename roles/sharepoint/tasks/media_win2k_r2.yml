@@ -29,4 +29,4 @@
 
 - name: Set win2012 r2 sxs path
   set_fact:
-    sxs_remote_path: '{{ win2012_r2_disk_image_out.mount_path }}sources\sxs'
+    sxs_remote_path: '{{ win2012_r2_disk_image_out.mount_paths[0] }}sources\sxs'

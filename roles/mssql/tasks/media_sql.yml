@@ -29,4 +29,4 @@
 
 - name: Set sql binary path
   set_fact:
-    sql_binary_path: '{{ mssql_disk_image_out.mount_path }}'
+    sql_binary_path: '{{ mssql_disk_image_out.mount_paths[0] }}'
