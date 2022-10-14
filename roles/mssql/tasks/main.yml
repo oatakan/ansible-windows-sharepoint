@@ -61,15 +61,22 @@
         PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
         PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
 
-    - name: SQL Enable TCP
+    - name: SQL Enable TCP protocol
       win_dsc:
-        resource_name: SqlServerNetwork
+        resource_name: SqlProtocol
         InstanceName: MSSQLSERVER
-        ProtocolName: Tcp
-        IsEnabled: True
-        TCPDynamicPort: False
+        ProtocolName: TcpIp
+        Enabled: True
+        PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
+        PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
+
+    - name: SQL Enable TCP port
+      win_dsc:
+        resource_name: SqlProtocolTcpIP
+        InstanceName: MSSQLSERVER
+        IpAddressGroup: IPAll
         TCPPort: 1433
-        RestartService: True
+        Enabled: True
         PSDSCRunAsCredential_username: "{{ domain_admin_username }}@{{ dns_domain_name }}"
         PSDSCRunAsCredential_password: "{{ domain_admin_password }}"
 
